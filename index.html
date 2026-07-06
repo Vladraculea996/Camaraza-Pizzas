@@ -1870,27 +1870,38 @@ const Schedule = {
 // BOOT
 // ============================================================
 // Botón "atrás" del teléfono: si hay un modal abierto, lo cierra en vez de salir de la página
-window.addEventListener('popstate', () => {
-  document.querySelectorAll('.modal-overlay.open').forEach(m => UI.closeModal(m.id, true));
-});
-
 window.addEventListener('DOMContentLoaded', async () => {
-  if (!DB) {
-    // El SDK de Supabase no cargó (sin red, CDN caído, bloqueador, etc.)
+  try {
+
+    if (!DB) {
+      UI.goTo('conn-error');
+      return;
+    }
+
+    UI.initConnectionMonitor();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .catch(err => console.warn('SW error:', err));
+    }
+
+    setTimeout(async () => {
+      try { await Auth.init(); } catch (e) { console.error('Auth error', e); }
+    }, 500);
+
+    if (typeof PWA !== 'undefined') {
+      try { PWA.init(); } catch (e) { console.error('PWA error', e); }
+    }
+
+    setTimeout(() => {
+      try { Menu.fetchAll(); } catch (e) { console.error('Menu error', e); }
+      try { PizzeriaConfig.loadPublic(); } catch (e) { console.error('Config error', e); }
+    }, 800);
+
+  } catch (err) {
+    console.error('BOOT FATAL ERROR:', err);
     UI.goTo('conn-error');
-    return;
   }
-  UI.initConnectionMonitor();
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(err => console.warn('No se pudo registrar el Service Worker:', err));
-  }
-  // Splash → auth check after 2s
-  setTimeout(() => Auth.init(), 2000);
-  Schedule.startClock();
-  PWA.init();
-  // Pre-load menu data in background
-  setTimeout(() => Menu.fetchAll(), 2500);
-  PizzeriaConfig.loadPublic();
 });
      
 <script type="module" src="./app.js"></script>
